@@ -1,0 +1,6 @@
+used-book
+*.exe
+.env
+.secret.env
+frontend/node_modules/
+frontend/dist/
