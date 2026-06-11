@@ -1,0 +1,27 @@
+name: Deploy Production
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    runs-on: self-hosted
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build versioned Docker image
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          docker build -t used-book:$VERSION .
+          kind load docker-image used-book:$VERSION --name kind
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes

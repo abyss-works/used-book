@@ -1,0 +1,88 @@
+# Preview 배포 템플릿 — $PR_NUMBER를 PR 번호로 치환하여 사용
+# envsubst < k8s/preview.yaml | kubectl apply -f -
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: used-book-preview-${PR_NUMBER}
+  namespace: preview
+  labels:
+    app: used-book-preview
+    pr-number: "${PR_NUMBER}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: used-book-preview
+      pr-number: "${PR_NUMBER}"
+  template:
+    metadata:
+      labels:
+        app: used-book-preview
+        pr-number: "${PR_NUMBER}"
+    spec:
+      containers:
+      - name: used-book
+        image: used-book:pr-${PR_NUMBER}
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: DB_HOST
+          value: postgres-preview.preview.svc.cluster.local
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: postgres
+        - name: DB_PASSWORD
+          value: postgres
+        - name: DB_NAME
+          value: usedbook
+        - name: PORT
+          value: "8080"
+        - name: ALADIN_TTB_KEY
+          value: ""
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: used-book-preview-${PR_NUMBER}
+  namespace: preview
+  labels:
+    app: used-book-preview
+    pr-number: "${PR_NUMBER}"
+spec:
+  selector:
+    app: used-book-preview
+    pr-number: "${PR_NUMBER}"
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: used-book-preview-${PR_NUMBER}
+  namespace: preview
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: "preview-used-book-${PR_NUMBER}.abyssworks.dev"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: used-book-preview-${PR_NUMBER}
+            port:
+              number: 80

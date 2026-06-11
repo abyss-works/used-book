@@ -1,0 +1,25 @@
+FROM node:22-alpine AS frontend
+WORKDIR /frontend
+COPY frontend/package.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
+FROM golang:1.25-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY main.go ./
+COPY aladin/ ./aladin/
+COPY optimizer/ ./optimizer/
+COPY model/ ./model/
+COPY handler/ ./handler/
+COPY --from=frontend /frontend/dist ./frontend/dist
+RUN CGO_ENABLED=0 GOOS=linux go build -o used-book .
+
+FROM alpine:3.20
+RUN apk --no-cache add ca-certificates
+WORKDIR /app
+COPY --from=builder /app/used-book .
+EXPOSE 8080
+CMD ["./used-book"]
