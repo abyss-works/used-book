@@ -41,9 +41,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr comment ${{ github.event.number }} \
-            --repo ${{ github.repository }} \
-            --body "🚀 Preview ready: https://used-book-pr-${{ github.event.number }}.abyssworks.dev"
+          COMMENT_ID=$(gh api "/repos/${{ github.repository }}/issues/${{ github.event.number }}/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("🚀 Preview ready"))) | .id' | head -1)
+          if [ -n "$COMMENT_ID" ]; then
+            gh api "/repos/${{ github.repository }}/issues/comments/$COMMENT_ID" \
+              -f body="🚀 Preview ready: https://used-book-pr-${{ github.event.number }}.abyssworks.dev" \
+              -X PATCH
+          else
+            gh pr comment ${{ github.event.number }} \
+              --repo ${{ github.repository }} \
+              --body "🚀 Preview ready: https://used-book-pr-${{ github.event.number }}.abyssworks.dev"
+          fi
 
   cleanup-preview:
     if: github.event.action == 'closed'
