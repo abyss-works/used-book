@@ -32,7 +32,7 @@ jobs:
 
       - name: Wait for rollout
         run: |
-          kubectl rollout status deployment/used-book-preview-${{ github.event.number }} \
+          kubectl rollout status deployment/used-book-pr-${{ github.event.number }} \
             -n preview --timeout=180s
 
       - name: Comment preview URL on PR
@@ -41,7 +41,7 @@ jobs:
         run: |
           gh pr comment ${{ github.event.number }} \
             --repo ${{ github.repository }} \
-            --body "🚀 Preview ready: https://preview-used-book-${{ github.event.number }}.abyssworks.dev"
+            --body "🚀 Preview ready: https://used-book-pr-${{ github.event.number }}.abyssworks.dev"
 
   cleanup-preview:
     if: github.event.action == 'closed'
