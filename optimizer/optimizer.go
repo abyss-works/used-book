@@ -185,7 +185,6 @@ func findBestCombination(candidates [][]Candidate, cfg Config) Solution {
 func findBestCombinationHeuristic(candidates [][]Candidate, cfg Config) Solution {
 	n := len(candidates)
 	best := Solution{}
-	bestSet := false
 
 	// 각 책별 최저가를 기본으로 시작
 	sel := make([]Candidate, 0, n)
@@ -200,7 +199,6 @@ func findBestCombinationHeuristic(candidates [][]Candidate, cfg Config) Solution
 		ShipCount:  countSellers(sel),
 		Sellers:    countSellers(sel),
 	}
-	bestSet = true
 
 	// 같은 판매자로 통합 시도 (배송비 절약)
 	for i := 0; i < n; i++ {

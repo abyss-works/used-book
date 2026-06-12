@@ -6,15 +6,25 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 
 	"github.com/abyss-works/used-book/model"
 )
 
 const (
-	baseURL    = "http://www.aladin.co.kr/ttb/api"
-	version    = "20131101"
-	outputType = "JS" // JSON
+	defaultBaseURL = "http://www.aladin.co.kr/ttb/api"
+	version        = "20131101"
+	outputType     = "JS" // JSON
 )
+
+var baseURL = defaultBaseURL
+
+func init() {
+	if u := os.Getenv("ALADIN_BASE_URL"); u != "" {
+		baseURL = u
+	}
+}
+
 
 // Client wraps Aladin Open API calls.
 type Client struct {
