@@ -1,0 +1,22 @@
+# Preview Ingress — $PR_NUMBER를 PR 번호로 치환하여 사용
+# envsubst < k8s/preview/ingress.yaml | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: used-book-pr-${PR_NUMBER}
+  namespace: preview
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: "used-book-pr-${PR_NUMBER}.abyssworks.dev"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: used-book-pr-${PR_NUMBER}
+            port:
+              number: 80

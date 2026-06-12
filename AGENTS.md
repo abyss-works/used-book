@@ -46,9 +46,27 @@ used-book/
 │       ├── views/       # Pages
 │       └── components/  # Reusable
 ├── Dockerfile            # 멀티스테이지 빌드
-├── k8s/                  # k8s manifests
-│   ├── app.yaml          # Deployment + Service
-│   └── postgres.yaml     # PostgreSQL StatefulSet
+├── k8s/                  # k8s manifests (env별 self-contained)
+│   ├── preview/
+│   │   ├── ns.yaml       # preview 네임스페이스
+│   │   ├── db/
+│   │   │   ├── pvc.yaml
+│   │   │   ├── deployment.yaml
+│   │   │   └── service.yaml
+│   │   └── app/
+│   │       ├── deployment.yaml   # $PR_NUMBER 치환
+│   │       ├── service.yaml
+│   │       └── ingress.yaml
+│   └── prod/
+│       ├── ns.yaml       # usedbook-prod 네임스페이스
+│       ├── db/
+│       │   ├── pvc.yaml
+│       │   ├── deployment.yaml
+│       │   └── service.yaml
+│       └── app/
+│           ├── deployment.yaml
+│           ├── service.yaml
+│           └── ingress.yaml
 ├── AGENTS.md             # (이 파일)
 └── CLAUDE.md
 ```

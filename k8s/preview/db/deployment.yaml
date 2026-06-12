@@ -1,22 +1,17 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: usedbook-prod
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: postgres
-  namespace: usedbook-prod
+  name: postgres-preview
+  namespace: preview
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: postgres
+      app: postgres-preview
   template:
     metadata:
       labels:
-        app: postgres
+        app: postgres-preview
     spec:
       containers:
       - name: postgres
@@ -36,28 +31,4 @@ spec:
       volumes:
       - name: pgdata
         persistentVolumeClaim:
-          claimName: postgres-pvc
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: postgres-pvc
-  namespace: usedbook-prod
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: postgres
-  namespace: usedbook-prod
-spec:
-  selector:
-    app: postgres
-  ports:
-  - port: 5432
-    targetPort: 5432
+          claimName: postgres-preview-pvc

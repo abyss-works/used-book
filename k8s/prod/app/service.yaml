@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: used-book
+  namespace: usedbook-prod
+  labels:
+    app: used-book
+    project: used-book
+    environment: prod
+spec:
+  selector:
+    app: used-book
+  ports:
+  - port: 80
+    targetPort: 8080
