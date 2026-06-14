@@ -1,5 +1,6 @@
-# Preview Deployment — $PR_NUMBER를 PR 번호로 치환하여 사용
-# envsubst < k8s/preview/deployment.yaml | kubectl apply -f -
+# Preview 배포 템플릿 — $PR_NUMBER를 PR 번호로 치환하여 사용
+# envsubst < k8s/preview/preview.yaml | kubectl apply -f -
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -52,3 +53,41 @@ spec:
           limits:
             cpu: 200m
             memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: used-book-pr-${PR_NUMBER}
+  namespace: preview
+  labels:
+    app: used-book-pr
+    pr-number: "${PR_NUMBER}"
+spec:
+  selector:
+    app: used-book-pr
+    pr-number: "${PR_NUMBER}"
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: used-book-pr-${PR_NUMBER}
+  namespace: preview
+  labels:
+    app: used-book-pr
+    pr-number: "${PR_NUMBER}"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: "used-book-pr-${PR_NUMBER}.abyssworks.dev"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: used-book-pr-${PR_NUMBER}
+            port:
+              number: 80

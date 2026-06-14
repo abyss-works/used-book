@@ -12,6 +12,8 @@ spec:
   selector:
     matchLabels:
       app: used-book
+      project: used-book
+      environment: prod
   template:
     metadata:
       labels:
