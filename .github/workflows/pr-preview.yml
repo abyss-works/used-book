@@ -23,7 +23,7 @@ jobs:
 
       - name: Deploy preview to k8s
         run: |
-          PR_NUMBER=${{ github.event.number }} envsubst < k8s/preview/preview.yaml | kubectl apply -f -
+          sed "s/\${PR_NUMBER}/${{ github.event.number }}/g" k8s/preview/preview.yaml | kubectl apply -f -
 
       - name: Wait for rollout
         run: |
