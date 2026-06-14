@@ -22,6 +22,15 @@ jobs:
         run: |
           kind load docker-image "used-book:${TAG}" --name kind
 
+      - name: Create Aladin API key secret
+        env:
+          ALADIN_TTB_KEY: ${{ secrets.ALADIN_TTB_KEY }}
+        run: |
+          kubectl create secret generic aladin-ttb-key \
+            --from-literal=ttbkey="${ALADIN_TTB_KEY}" \
+            -n usedbook-prod \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Update manifest with new image tag
         run: |
           kubectl kustomize k8s/prod/ > /dev/null 2>&1

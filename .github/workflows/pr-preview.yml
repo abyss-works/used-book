@@ -21,6 +21,15 @@ jobs:
       - name: Load image into kind cluster
         run: kind load docker-image used-book:pr-${{ github.event.number }} --name kind
 
+      - name: Create Aladin API key secret
+        env:
+          ALADIN_TTB_KEY: ${{ secrets.ALADIN_TTB_KEY }}
+        run: |
+          kubectl create secret generic aladin-ttb-key \
+            --from-literal=ttbkey="${ALADIN_TTB_KEY}" \
+            -n preview \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy preview to k8s
         run: |
           sed "s/\${PR_NUMBER}/${{ github.event.number }}/g" k8s/preview/preview.yaml | kubectl apply -f -

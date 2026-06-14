@@ -43,6 +43,5 @@ spec:
             secretKeyRef:
               name: aladin-ttb-key
               key: ttbkey
-              optional: true
         ports:
         - containerPort: 8080
