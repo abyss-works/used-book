@@ -22,6 +22,13 @@ export interface SearchResult {
   used_items: UsedItem[]
 }
 
+export interface SearchResponse {
+  books: Book[]
+  total: number
+  start: number
+  max: number
+}
+
 export interface WishlistEntry {
   id: number
   book: Book

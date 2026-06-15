@@ -3,12 +3,12 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import SearchBar from '@/components/SearchBar.vue'
 import BookCard from '@/components/BookCard.vue'
-import type { Book, SearchResult } from '@/types'
+import type { Book } from '@/types'
 import { searchBooks } from '@/api'
 
 const router = useRouter()
 const query = ref('')
-const results = ref<SearchResult[]>([])
+const results = ref<Book[]>([])
 const loading = ref(false)
 const searched = ref(false)
 
@@ -74,9 +74,8 @@ function onBookClick(book: Book) {
         <p class="text-text-muted text-xs">{{ results.length }}건 검색됨</p>
         <BookCard
           v-for="r in results"
-          :key="r.book.id"
-          :book="r.book"
-          :subtitle="r.used_items.length > 0 ? `중고 ${r.used_items.length}건 · ${r.used_items[0].price.toLocaleString()}원~` : undefined"
+          :key="r.id"
+          :book="r"
           @click="onBookClick"
         />
       </div>

@@ -241,12 +241,16 @@ func (c *Client) LookupUsed(bookID string) (*model.AladinUsedResult, error) {
 					} `json:"usedList"`
 				} `json:"subInfo"`
 			}{single}
+		} else {
+			alaItems = items
 		}
-	} else {
-		return nil, fmt.Errorf("aladin lookup: no item in response")
 	}
 
+	if len(alaItems) == 0 {
+		return nil, fmt.Errorf("aladin lookup: empty item list")
+	}
 	alaItem := alaItems[0]
+
 	book = model.Book{
 		ID:     fmt.Sprintf("%d", alaItem.ItemID),
 		Title:  alaItem.Title,
