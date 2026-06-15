@@ -1,6 +1,12 @@
 name: PR Preview
 
 on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number for preview deployment'
+        required: true
+        type: number
   pull_request:
     types: [opened, synchronize, closed]
 
@@ -11,59 +17,60 @@ permissions:
 jobs:
   deploy-preview:
     if: github.event.action != 'closed'
-    runs-on: self-hosted
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: docker build -t used-book:pr-${{ github.event.number }} .
+        run: docker build -t used-book:pr-${{ github.event.number || inputs.pr_number }} .
 
       - name: Load image into kind cluster
-        run: kind load docker-image used-book:pr-${{ github.event.number }} --name kind
+        run: kind load docker-image used-book:pr-${{ github.event.number || inputs.pr_number }} --name kind
 
-      - name: Ensure preview namespace and shared DB
+      - name: Create Aladin API key secret
+        env:
+          ALADIN_TTB_KEY: ${{ secrets.ALADIN_TTB_KEY }}
         run: |
-          kubectl get ns preview 2>/dev/null || kubectl apply -f k8s/preview/ns.yaml
-          kubectl get deployment postgres-preview -n preview 2>/dev/null || kubectl apply -f k8s/preview/db/
+          kubectl create secret generic aladin-ttb-key \
+            --from-literal=ttbkey="${ALADIN_TTB_KEY}" \
+            -n preview \
+            --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy preview to k8s
         run: |
-          for f in k8s/preview/app/deployment.yaml k8s/preview/app/service.yaml k8s/preview/app/ingress.yaml; do
-            PR_NUMBER=${{ github.event.number }} envsubst < "$f" | kubectl apply -f -
-          done
+          sed "s/\${PR_NUMBER}/${{ github.event.number || inputs.pr_number }}/g" k8s/preview/preview.yaml | kubectl apply -f -
 
       - name: Wait for rollout
         run: |
-          kubectl rollout status deployment/used-book-pr-${{ github.event.number }} \
-            -n preview --timeout=180s
+          kubectl rollout status deployment/used-book-pr-${{ github.event.number || inputs.pr_number }} -n preview --timeout=180s
 
       - name: Comment preview URL on PR
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          COMMENT_ID=$(gh api "/repos/${{ github.repository }}/issues/${{ github.event.number }}/comments" \
+          COMMENT_ID=$(gh api "/repos/${{ github.repository }}/issues/${{ github.event.number || inputs.pr_number }}/comments" \
             --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("🚀 Preview ready"))) | .id' | head -1)
           if [ -n "$COMMENT_ID" ]; then
             gh api "/repos/${{ github.repository }}/issues/comments/$COMMENT_ID" \
-              -f body="🚀 Preview ready: https://used-book-pr-${{ github.event.number }}.abyssworks.dev" \
+              -f body="🚀 Preview ready: https://used-book-pr-${{ github.event.number || inputs.pr_number }}.abyssworks.dev" \
               -X PATCH
           else
-            gh pr comment ${{ github.event.number }} \
+            gh pr comment ${{ github.event.number || inputs.pr_number }} \
               --repo ${{ github.repository }} \
-              --body "🚀 Preview ready: https://used-book-pr-${{ github.event.number }}.abyssworks.dev"
+              --body "🚀 Preview ready: https://used-book-pr-${{ github.event.number || inputs.pr_number }}.abyssworks.dev"
           fi
 
   cleanup-preview:
     if: github.event.action == 'closed'
-    runs-on: self-hosted
+    runs-on: [self-hosted]
     steps:
       - name: Delete preview resources
         run: |
           kubectl delete deployment,service,ingress \
-            -l pr-number=${{ github.event.number }} \
+            -l pr-number=${{ github.event.number || inputs.pr_number }} \
             -n preview \
             --ignore-not-found
 
       - name: Remove Docker image
         run: |
-          docker rmi used-book:pr-${{ github.event.number }} || true
+          docker rmi used-book:pr-${{ github.event.number || inputs.pr_number }} || true

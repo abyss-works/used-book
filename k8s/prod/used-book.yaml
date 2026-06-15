@@ -12,6 +12,8 @@ spec:
   selector:
     matchLabels:
       app: used-book
+      project: used-book
+      environment: prod
   template:
     metadata:
       labels:
@@ -41,6 +43,5 @@ spec:
             secretKeyRef:
               name: aladin-ttb-key
               key: ttbkey
-              optional: true
         ports:
         - containerPort: 8080

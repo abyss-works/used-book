@@ -4,3 +4,4 @@ used-book
 .secret.env
 frontend/node_modules/
 frontend/dist/
+runner/

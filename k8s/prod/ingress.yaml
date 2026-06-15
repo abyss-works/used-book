@@ -3,11 +3,13 @@ kind: Ingress
 metadata:
   name: used-book
   namespace: usedbook-prod
-  annotations:
-    kubernetes.io/ingress.class: nginx
+  labels:
+    project: used-book
+    environment: prod
 spec:
+  ingressClassName: nginx
   rules:
-  - host: used-book.abyssworks.dev
+  - host: "used-book.abyssworks.dev"
     http:
       paths:
       - path: /
