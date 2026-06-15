@@ -49,6 +49,21 @@ export interface PurchasedItem {
   delivery_fee: number
 }
 
+export interface LookupResult {
+  book: Book
+  items: UsedItem[] | null
+}
+
+export interface UsedItem {
+  sellerId: string
+  sellerName: string
+  price: number
+  condition: string
+  deliveryFee: number
+  stockCount: number
+  link: string
+}
+
 export interface ApiResult<T> {
   data?: T
   error?: string
