@@ -1,51 +1,50 @@
-import axios from 'axios'
+import type { SearchResult, WishlistEntry, OptimizationResult, ApiResult } from '@/types'
 
-const api = axios.create({
-  baseURL: '/api',
-})
+const BASE = ''
 
-export interface Book {
-  id: string
-  title: string
-  author: string
-  cover: string
+async function apiCall<T>(url: string, options?: RequestInit): Promise<ApiResult<T>> {
+  try {
+    const res = await fetch(BASE + url, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+    })
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      return { error: text || `HTTP ${res.status}` }
+    }
+    const data = await res.json()
+    return { data }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Network error' }
+  }
 }
 
-export interface SearchResult {
-  books: Book[]
-  total: number
-  start: number
-  max: number
+export async function searchBooks(query: string): Promise<ApiResult<SearchResult[]>> {
+  return apiCall<SearchResult[]>(`/api/search?q=${encodeURIComponent(query)}`)
 }
 
-export interface OptimizationResult {
-  total_cost: number
-  ship_count: number
-  sellers: number
-  purchases: Array<{
-    title: string
-    author: string
-    seller_name: string
-    price: number
-    condition: string
-    delivery_fee: number
-  }>
+export async function getWishlist(): Promise<ApiResult<WishlistEntry[]>> {
+  return apiCall<WishlistEntry[]>('/api/wishlist')
 }
 
-export async function searchBooks(
-  query: string,
-  max = 10,
-  start = 1,
-): Promise<SearchResult> {
-  const res = await api.get('/search', {
-    params: { q: query, max, start },
+export async function addToWishlist(bookId: string): Promise<ApiResult<WishlistEntry>> {
+  return apiCall<WishlistEntry>('/api/wishlist', {
+    method: 'POST',
+    body: JSON.stringify({ id: bookId }),
   })
-  return res.data
 }
 
-export async function optimizeWishlist(
-  wishlist: Array<{ book_id: string; title: string; author: string }>,
-): Promise<OptimizationResult> {
-  const res = await api.post('/optimize', { wishlist })
-  return res.data
+export async function removeFromWishlist(id: number): Promise<ApiResult<null>> {
+  return apiCall<null>(`/api/wishlist/${id}`, { method: 'DELETE' })
+}
+
+export async function getOptimization(): Promise<ApiResult<OptimizationResult>> {
+  return apiCall<OptimizationResult>('/api/optimize')
+}
+
+export async function postOptimization(items: string[]): Promise<ApiResult<OptimizationResult>> {
+  return apiCall<OptimizationResult>('/api/optimize', {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  })
 }
