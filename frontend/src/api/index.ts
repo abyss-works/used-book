@@ -1,4 +1,4 @@
-import type { Book, WishlistEntry, OptimizationResult, ApiResult, SearchResponse } from '@/types'
+import type { Book, WishlistEntry, OptimizationResult, ApiResult, SearchResponse, LookupResult } from '@/types'
 
 const BASE = ''
 
@@ -27,6 +27,10 @@ export async function searchBooks(query: string): Promise<ApiResult<Book[]>> {
 
 export async function getWishlist(): Promise<ApiResult<WishlistEntry[]>> {
   return apiCall<WishlistEntry[]>('/api/wishlist')
+}
+
+export async function lookupBook(id: string): Promise<ApiResult<LookupResult>> {
+  return apiCall<LookupResult>(`/api/lookup?id=${encodeURIComponent(id)}`)
 }
 
 export async function addToWishlist(bookId: string): Promise<ApiResult<WishlistEntry>> {
