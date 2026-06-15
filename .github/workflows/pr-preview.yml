@@ -1,6 +1,12 @@
 name: PR Preview
 
 on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number for preview deployment'
+        required: true
+        type: number
   pull_request:
     types: [opened, synchronize, closed]
 
@@ -16,10 +22,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: docker build -t used-book:pr-${{ github.event.number }} .
+        run: docker build -t used-book:pr-${{ github.event.number || inputs.pr_number }} .
 
       - name: Load image into kind cluster
-        run: kind load docker-image used-book:pr-${{ github.event.number }} --name kind
+        run: kind load docker-image used-book:pr-${{ github.event.number || inputs.pr_number }} --name kind
 
       - name: Create Aladin API key secret
         env:
@@ -32,26 +38,26 @@ jobs:
 
       - name: Deploy preview to k8s
         run: |
-          sed "s/\${PR_NUMBER}/${{ github.event.number }}/g" k8s/preview/preview.yaml | kubectl apply -f -
+          sed "s/\${PR_NUMBER}/${{ github.event.number || inputs.pr_number }}/g" k8s/preview/preview.yaml | kubectl apply -f -
 
       - name: Wait for rollout
         run: |
-          kubectl rollout status deployment/used-book-pr-${{ github.event.number }} -n preview --timeout=180s
+          kubectl rollout status deployment/used-book-pr-${{ github.event.number || inputs.pr_number }} -n preview --timeout=180s
 
       - name: Comment preview URL on PR
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          COMMENT_ID=$(gh api "/repos/${{ github.repository }}/issues/${{ github.event.number }}/comments" \
+          COMMENT_ID=$(gh api "/repos/${{ github.repository }}/issues/${{ github.event.number || inputs.pr_number }}/comments" \
             --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("🚀 Preview ready"))) | .id' | head -1)
           if [ -n "$COMMENT_ID" ]; then
             gh api "/repos/${{ github.repository }}/issues/comments/$COMMENT_ID" \
-              -f body="🚀 Preview ready: https://used-book-pr-${{ github.event.number }}.abyssworks.dev" \
+              -f body="🚀 Preview ready: https://used-book-pr-${{ github.event.number || inputs.pr_number }}.abyssworks.dev" \
               -X PATCH
           else
-            gh pr comment ${{ github.event.number }} \
+            gh pr comment ${{ github.event.number || inputs.pr_number }} \
               --repo ${{ github.repository }} \
-              --body "🚀 Preview ready: https://used-book-pr-${{ github.event.number }}.abyssworks.dev"
+              --body "🚀 Preview ready: https://used-book-pr-${{ github.event.number || inputs.pr_number }}.abyssworks.dev"
           fi
 
   cleanup-preview:
@@ -61,10 +67,10 @@ jobs:
       - name: Delete preview resources
         run: |
           kubectl delete deployment,service,ingress \
-            -l pr-number=${{ github.event.number }} \
+            -l pr-number=${{ github.event.number || inputs.pr_number }} \
             -n preview \
             --ignore-not-found
 
       - name: Remove Docker image
         run: |
-          docker rmi used-book:pr-${{ github.event.number }} || true
+          docker rmi used-book:pr-${{ github.event.number || inputs.pr_number }} || true
