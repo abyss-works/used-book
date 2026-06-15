@@ -1,4 +1,4 @@
-import type { SearchResult, WishlistEntry, OptimizationResult, ApiResult } from '@/types'
+import type { Book, WishlistEntry, OptimizationResult, ApiResult, SearchResponse } from '@/types'
 
 const BASE = ''
 
@@ -19,8 +19,10 @@ async function apiCall<T>(url: string, options?: RequestInit): Promise<ApiResult
   }
 }
 
-export async function searchBooks(query: string): Promise<ApiResult<SearchResult[]>> {
-  return apiCall<SearchResult[]>(`/api/search?q=${encodeURIComponent(query)}`)
+export async function searchBooks(query: string): Promise<ApiResult<Book[]>> {
+  const res = await apiCall<SearchResponse>(`/api/search?q=${encodeURIComponent(query)}`)
+  if (res.error) return { error: res.error }
+  return { data: res.data?.books || [] }
 }
 
 export async function getWishlist(): Promise<ApiResult<WishlistEntry[]>> {
