@@ -12,4 +12,4 @@ resources:
   - ingress.yaml
 images:
 - name: used-book
-  newTag: git-b49119d
+  newTag: git-7fd27a8
