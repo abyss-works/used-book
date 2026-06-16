@@ -121,6 +121,30 @@ func (c *Client) SearchBooks(query string, max int, start int) (*model.AladinSea
 	}, nil
 }
 
+// 알라딘 usedList 응답 구조 (3개 카테고리 요약)
+type aladinUsedCategory struct {
+	ItemCount int    `json:"itemCount"`
+	MinPrice  int    `json:"minPrice"`
+	Link      string `json:"link"`
+}
+
+type aladinUsedList struct {
+	AladinUsed *aladinUsedCategory `json:"aladinUsed"`
+	UserUsed   *aladinUsedCategory `json:"userUsed"`
+	SpaceUsed  *aladinUsedCategory `json:"spaceUsed"`
+}
+
+type aladinItem struct {
+	ItemID  int    `json:"itemId"`
+	Title   string `json:"title"`
+	Author  string `json:"author"`
+	Isbn13  string `json:"isbn13"`
+	Cover   string `json:"cover"`
+	SubInfo *struct {
+		UsedList *aladinUsedList `json:"usedList"`
+	} `json:"subInfo"`
+}
+
 // LookupUsed retrieves used book listings for a specific book.
 func (c *Client) LookupUsed(bookID string) (*model.AladinUsedResult, error) {
 	params := url.Values{}
@@ -148,110 +172,24 @@ func (c *Client) LookupUsed(bookID string) (*model.AladinUsedResult, error) {
 		return nil, fmt.Errorf("aladin lookup parse: %w", err)
 	}
 
-	// 상품 기본 정보
-	var book model.Book
-	var alaItems []struct {
-		ItemID      int    `json:"itemId"`
-		Title       string `json:"title"`
-		Author      string `json:"author"`
-		Isbn13      string `json:"isbn13"`
-		Cover       string `json:"cover"`
-		SubInfo     *struct {
-			UsedList *struct {
-				UsedProducts []struct {
-					SellerID     string `json:"sellerId"`
-					SellerName   string `json:"sellerName"`
-					PriceTotal   int    `json:"priceTotal"`
-					Price        int    `json:"price"`
-					Condition    string `json:"condition"`
-					DeliveryFee  int    `json:"deliveryFee"`
-					StockCount   int    `json:"stockCount"`
-					Link         string `json:"link"`
-				} `json:"usedProducts"`
-			} `json:"usedList"`
-		} `json:"subInfo"`
+	itemsRaw, ok := raw["item"]
+	if !ok {
+		return nil, fmt.Errorf("aladin lookup: no item in response")
 	}
 
-	if itemsRaw, ok := raw["item"]; ok {
-		var items []struct {
-			ItemID      int    `json:"itemId"`
-			Title       string `json:"title"`
-			Author      string `json:"author"`
-			Isbn13      string `json:"isbn13"`
-			Cover       string `json:"cover"`
-			SubInfo     *struct {
-				UsedList *struct {
-					UsedProducts []struct {
-						SellerID     string `json:"sellerId"`
-						SellerName   string `json:"sellerName"`
-						PriceTotal   int    `json:"priceTotal"`
-						Price        int    `json:"price"`
-						Condition    string `json:"condition"`
-						DeliveryFee  int    `json:"deliveryFee"`
-						StockCount   int    `json:"stockCount"`
-						Link         string `json:"link"`
-					} `json:"usedProducts"`
-				} `json:"usedList"`
-			} `json:"subInfo"`
+	// item 배열 파싱 시도
+	var items []aladinItem
+	if err := json.Unmarshal(itemsRaw, &items); err != nil || len(items) == 0 {
+		// 단일 객체로 왔을 경우
+		var single aladinItem
+		if err := json.Unmarshal(itemsRaw, &single); err != nil || single.ItemID == 0 {
+			return nil, fmt.Errorf("aladin lookup: item parse failed: %w", err)
 		}
-		if err := json.Unmarshal(itemsRaw, &items); err != nil || len(items) == 0 {
-			// 단건인 경우 단일 객체로 올수도 있음
-			var single struct {
-				ItemID      int    `json:"itemId"`
-				Title       string `json:"title"`
-				Author      string `json:"author"`
-				Isbn13      string `json:"isbn13"`
-				Cover       string `json:"cover"`
-				SubInfo     *struct {
-					UsedList *struct {
-						UsedProducts []struct {
-							SellerID     string `json:"sellerId"`
-							SellerName   string `json:"sellerName"`
-							PriceTotal   int    `json:"priceTotal"`
-							Price        int    `json:"price"`
-							Condition    string `json:"condition"`
-							DeliveryFee  int    `json:"deliveryFee"`
-							StockCount   int    `json:"stockCount"`
-							Link         string `json:"link"`
-						} `json:"usedProducts"`
-					} `json:"usedList"`
-				} `json:"subInfo"`
-			}
-			if err := json.Unmarshal(itemsRaw, &single); err != nil || single.ItemID == 0 {
-				return nil, fmt.Errorf("aladin lookup items parse: %w", err)
-			}
-			alaItems = []struct {
-				ItemID      int    `json:"itemId"`
-				Title       string `json:"title"`
-				Author      string `json:"author"`
-				Isbn13      string `json:"isbn13"`
-				Cover       string `json:"cover"`
-				SubInfo     *struct {
-					UsedList *struct {
-						UsedProducts []struct {
-							SellerID     string `json:"sellerId"`
-							SellerName   string `json:"sellerName"`
-							PriceTotal   int    `json:"priceTotal"`
-							Price        int    `json:"price"`
-							Condition    string `json:"condition"`
-							DeliveryFee  int    `json:"deliveryFee"`
-							StockCount   int    `json:"stockCount"`
-							Link         string `json:"link"`
-						} `json:"usedProducts"`
-					} `json:"usedList"`
-				} `json:"subInfo"`
-			}{single}
-		} else {
-			alaItems = items
-		}
+		items = []aladinItem{single}
 	}
 
-	if len(alaItems) == 0 {
-		return nil, fmt.Errorf("aladin lookup: empty item list")
-	}
-	alaItem := alaItems[0]
-
-	book = model.Book{
+	alaItem := items[0]
+	book := model.Book{
 		ID:     fmt.Sprintf("%d", alaItem.ItemID),
 		Title:  alaItem.Title,
 		Author: alaItem.Author,
@@ -260,17 +198,34 @@ func (c *Client) LookupUsed(bookID string) (*model.AladinUsedResult, error) {
 	}
 
 	var used []model.UsedItem
+	categories := []struct {
+		key  string
+		name string
+		cond string
+	}{
+		{"aladinUsed", "알라딘 중고", "상"},
+		{"userUsed", "개인 판매자", "중"},
+		{"spaceUsed", "알라딘 매장", "상"},
+	}
+
 	if alaItem.SubInfo != nil && alaItem.SubInfo.UsedList != nil {
-		for _, up := range alaItem.SubInfo.UsedList.UsedProducts {
-			used = append(used, model.UsedItem{
-				SellerID:    up.SellerID,
-				SellerName:  up.SellerName,
-				Price:       up.Price,
-				Condition:   up.Condition,
-				DeliveryFee: up.DeliveryFee,
-				Stock:       up.StockCount,
-				Link:        up.Link,
-			})
+		ul := alaItem.SubInfo.UsedList
+		// category pointer map을 만들어서 key로 조회
+		catMap := map[string]*aladinUsedCategory{
+			"aladinUsed": ul.AladinUsed,
+			"userUsed":   ul.UserUsed,
+			"spaceUsed":  ul.SpaceUsed,
+		}
+		for _, cat := range categories {
+			if c := catMap[cat.key]; c != nil && c.ItemCount > 0 {
+				used = append(used, model.UsedItem{
+					SellerName:  cat.name,
+					Price:       c.MinPrice,
+					Condition:   cat.cond,
+					Stock:       c.ItemCount,
+					Link:        c.Link,
+				})
+			}
 		}
 	}
 

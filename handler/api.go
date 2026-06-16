@@ -64,13 +64,13 @@ func (h *Handler) handleLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.aladin.LookupUsed(id)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "알라딘 조회 실패: "+err.Error())
-		return
-	}
+				result, err := h.aladin.LookupUsed(id)
+				if err != nil {
+					writeError(w, http.StatusInternalServerError, "알라딘 조회 실패: "+err.Error())
+					return
+				}
 
-	writeJSON(w, http.StatusOK, result)
+				writeJSON(w, http.StatusOK, result)
 }
 
 // POST /api/optimize
