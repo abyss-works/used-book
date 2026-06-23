@@ -11,5 +11,6 @@ resources:
   - postgres.yaml
   - ingress.yaml
 images:
-- name: registry.abyssworks.dev/used-book
+- name: used-book
+  newName: registry.abyssworks.dev/used-book
   newTag: git-b49119d
